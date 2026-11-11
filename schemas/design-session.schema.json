@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-session.schema.json",
+  "title": "UI Design Session",
+  "description": "ui-design 设计过程状态文件（.ui-design/design-session.md 的 frontmatter）。唯一恢复点：新会话凭本文件继续设计。",
+  "type": "object",
+  "required": ["schema_version", "project", "session"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "project": {
+      "type": "object",
+      "description": "design.md 归属的目标项目",
+      "required": ["name", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "output": { "type": "string", "minLength": 1, "default": "design.md" },
+        "output_dir": { "type": "string", "default": "." }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["stage", "status", "frozen"],
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "enum": ["DISCOVERY", "STRUCTURE", "VISUAL", "INTERACTION", "DATA", "REVIEW", "FROZEN"],
+          "description": "七阶段状态机，允许回退；frozen 为 true 时必须为 FROZEN"
+        },
+        "status": {
+          "enum": ["in_progress", "paused", "completed"]
+        },
+        "frozen": {
+          "type": "boolean",
+          "description": "仅用户在 S7 明确确认后才能为 true"
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/decision" }
+    },
+    "pending": {
+      "type": "array",
+      "description": "待确认问题池，问题解决后移入 history，不留在本列表",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^Q-[0-9]{3}$" },
+          "category": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "stage": {
+            "enum": ["DISCOVERY", "STRUCTURE", "VISUAL", "INTERACTION", "DATA", "REVIEW", "FROZEN"]
+          },
+          "related_decisions": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^D-[0-9]{3}$" },
+            "description": "关联决策 ID，供回退时检查影响面"
+          }
+        }
+      }
+    },
+    "history": {
+      "type": "array",
+      "description": "修改历史，只追加不修改",
+      "items": {
+        "type": "object",
+        "required": ["at", "action"],
+        "additionalProperties": false,
+        "properties": {
+          "at": { "type": "string", "minLength": 1 },
+          "action": {
+            "enum": [
+              "decision_proposed", "decision_confirmed", "decision_superseded",
+              "question_added", "question_resolved",
+              "stage_advanced", "design_generated",
+              "validation_passed", "validation_failed",
+              "frozen", "unfrozen", "session_resumed", "note"
+            ]
+          },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "design_md_generated": { "type": "boolean" },
+        "design_md_path": { "type": "string" },
+        "last_validation": {
+          "enum": ["READY_FOR_REVIEW", "FAILED", ""],
+          "description": "最近一次完整性检查结果"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "session": { "properties": { "frozen": { "const": true } } } }, "required": ["session"] },
+      "then": { "properties": { "session": { "properties": { "stage": { "const": "FROZEN" } } } } },
+      "description": "frozen 为 true 当且仅当用户确认，此时阶段必须为 FROZEN"
+    }
+  ],
+  "$defs": {
+    "decision": {
+      "type": "object",
+      "required": ["id", "category", "description", "value", "status", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^D-[0-9]{3}$" },
+        "category": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "value": {},
+        "status": { "enum": ["proposed", "confirmed", "pending", "superseded"] },
+        "source": { "enum": ["user", "ai"] },
+        "stage": {
+          "enum": ["DISCOVERY", "STRUCTURE", "VISUAL", "INTERACTION", "DATA", "REVIEW", "FROZEN"]
+        },
+        "superseded_by": { "type": "string", "pattern": "^D-[0-9]{3}$" },
+        "confirmed_at": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "superseded" } }, "required": ["status"] },
+          "then": { "required": ["superseded_by"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "confirmed" } }, "required": ["status"] },
+          "then": { "properties": { "source": { "const": "user" } } }
+        }
+      ]
+    }
+  }
+}

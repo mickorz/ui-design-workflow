@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-decision.schema.json",
+  "title": "UI Design Decision",
+  "description": "ui-design 工作流的设计决策记录。决策演变通过 superseded 状态保留，不允许删除历史决策。",
+  "type": "object",
+  "required": ["id", "category", "description", "value", "status", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^D-[0-9]{3}$",
+      "description": "决策 ID，按序递增，不复用"
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "description": "决策类别：layout / navigation / visual-style / color / typography / density / component / interaction / chart / data / responsive / tech-constraint / acceptance / other"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "人读的决策描述"
+    },
+    "value": {
+      "description": "决策值，供机器读取（如 single-page / light-saas / comfortable），类型不限"
+    },
+    "status": {
+      "enum": ["proposed", "confirmed", "pending", "superseded"],
+      "description": "proposed=AI 提议，confirmed=用户确认，pending=等待回答，superseded=被替代"
+    },
+    "source": {
+      "enum": ["user", "ai"],
+      "description": "user=用户明确给出或确认，ai=AI 建议；AI 建议未经用户确认不得标 confirmed"
+    },
+    "stage": {
+      "enum": ["DISCOVERY", "STRUCTURE", "VISUAL", "INTERACTION", "DATA", "REVIEW", "FROZEN"],
+      "description": "该决策产生的阶段"
+    },
+    "superseded_by": {
+      "type": "string",
+      "pattern": "^D-[0-9]{3}$",
+      "description": "替代本决策的新决策 ID，仅 status 为 superseded 时必填"
+    },
+    "confirmed_at": {
+      "type": "string",
+      "description": "用户确认时间，status 为 confirmed 时填写"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "superseded" } }, "required": ["status"] },
+      "then": { "required": ["superseded_by"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "confirmed" } }, "required": ["status"] },
+      "then": { "properties": { "source": { "const": "user" } } }
+    }
+  ]
+}
