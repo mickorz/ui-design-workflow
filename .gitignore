@@ -1,0 +1,12 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# macOS
+.DS_Store
+
+# Claude Code 本地配置（不进 git）
+.claude/settings.local.json
+
+# 说明：dev-docs/、dev-examples/、thirdparties/ 均随仓库入库，不要 ignore。
+# thirdparties/ 下如需排除某个本地只读目录，在此单独追加该目录条目。
